@@ -16,8 +16,11 @@
  * limitations under the License.
  */
 
+import SocketDemo.WordWithCount
+import org.apache.flink.runtime.state.filesystem.FsStateBackend
+import org.apache.flink.streaming.api.CheckpointingMode
+import org.apache.flink.streaming.api.environment.CheckpointConfig
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.streaming.api.windowing.time.Time
 
 /**
   * Implements a streaming windowed version of the "WordCount" program.
@@ -30,39 +33,36 @@ import org.apache.flink.streaming.api.windowing.time.Time
   * }}}
   * and run this example with the hostname and the port as arguments..
   */
-object SocketDemo {
+object CheckpointDemo {
 
   /** Main program method */
   def main(args: Array[String]) : Unit = {
 
-    // the host and the port to connect to
     val hostname: String = "localhost"
     val port: Int = 12345
 
-    // get the execution environment
     val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
 
-    // get input data by connecting to the socket
+    // checkpoint
+    env.enableCheckpointing(10000)
+    env.getCheckpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE)
+    env.getCheckpointConfig.setMinPauseBetweenCheckpoints(500)
+    env.getCheckpointConfig.setCheckpointTimeout(60000)
+    env.getCheckpointConfig.setMaxConcurrentCheckpoints(1)
+    env.getCheckpointConfig.enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
+    env.setStateBackend(new FsStateBackend("hdfs://localhost:9000/zzz/flink_backup/"))
+
     val text: DataStream[String] = env.socketTextStream(hostname, port, '\n')
 
-    /*
     val windowCounts = text
       .flatMap { w => w.split("\\s") }
       .map { w => WordWithCount(w, 1) }
       .keyBy("word")
-      .timeWindow(Time.seconds(5))
       .sum("count")
 
-    windowCounts.print().setParallelism(1)
-    */
-
-    text.map { w =>
-      s"word: ${w}"
-    }.print()
+    windowCounts.print()
 
     env.execute("Socket Window WordCount")
   }
 
-  /** Data type for words with count */
-  case class WordWithCount(word: String, count: Long)
 }

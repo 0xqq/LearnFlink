@@ -30,7 +30,7 @@ import org.apache.flink.streaming.api.windowing.time.Time
   * }}}
   * and run this example with the hostname and the port as arguments..
   */
-object SocketWindowWordCount {
+object SocketDemo {
 
   /** Main program method */
   def main(args: Array[String]) : Unit = {
@@ -45,7 +45,7 @@ object SocketWindowWordCount {
     // get input data by connecting to the socket
     val text: DataStream[String] = env.socketTextStream(hostname, port, '\n')
 
-    // parse the data, group it, window it, and aggregate the counts 
+    /*
     val windowCounts = text
       .flatMap { w => w.split("\\s") }
       .map { w => WordWithCount(w, 1) }
@@ -53,8 +53,12 @@ object SocketWindowWordCount {
       .timeWindow(Time.seconds(5))
       .sum("count")
 
-    // print the results with a single thread, rather than in parallel
     windowCounts.print().setParallelism(1)
+    */
+
+    text.map { w =>
+      s"word: ${w}"
+    }.print()
 
     env.execute("Socket Window WordCount")
   }
